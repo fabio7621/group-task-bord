@@ -1,0 +1,39 @@
+import { Router } from 'express'
+import { col } from '../db.js'
+import { requireAuth } from '../auth.js'
+
+const router = Router()
+router.use(requireAuth)
+
+/** 登入後跳出的提醒列表，跨組別（規格 §5、design.md §4-3）。 */
+router.get('/', async (req, res, next) => {
+  try {
+    const reminders = await col('reminders').aggregate([
+      { $match: { toUserId: req.user._id } },
+      { $sort: { at: -1 } },
+      { $lookup: { from: 'tasks', localField: 'taskId', foreignField: '_id', as: 'task' } },
+      { $unwind: '$task' },
+      { $match: { 'task.status': 'submitted' } },
+      { $lookup: { from: 'groups', localField: 'groupId', foreignField: '_id', as: 'group' } },
+      { $unwind: '$group' },
+      { $lookup: { from: 'users', localField: 'fromUserId', foreignField: '_id', as: 'from' } },
+      { $unwind: '$from' }
+    ]).toArray()
+
+    res.json({
+      data: reminders.map((r) => ({
+        id: String(r._id),
+        groupId: String(r.groupId),
+        groupName: r.group.name,
+        taskId: String(r.taskId),
+        taskTitle: r.task.title,
+        fromName: r.from.displayName,
+        at: r.at.toISOString()
+      }))
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+export default router

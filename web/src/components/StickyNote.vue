@@ -19,7 +19,8 @@ const tilt = computed(() => {
   return `rotate(${(((seed % 9) - 4) * 0.55).toFixed(2)}deg)`
 })
 
-const label = (id, name) => (id === props.meId ? `${name}（你）` : name)
+const nameWithYou = (userId, displayName) =>
+  (userId === props.meId ? `${displayName}（你）` : displayName)
 </script>
 
 <template>
@@ -32,11 +33,11 @@ const label = (id, name) => (id === props.meId ? `${name}（你）` : name)
     <div class="note__title">{{ task.title }}</div>
 
     <div v-if="task.assigneeName" class="note__assignee">
-      執行者：{{ label(task.assigneeId, task.assigneeName) }}
+      執行者：{{ nameWithYou(task.assigneeId, task.assigneeName) }}
     </div>
 
     <div class="note__foot">
-      <span>{{ label(task.authorId, task.authorName) }} 發布</span>
+      <span>{{ nameWithYou(task.authorId, task.authorName) }} 發布</span>
       <span v-if="task.status === 'submitted'">已回報完成</span>
       <span v-else-if="task.dueDate">{{ shortDate(task.dueDate) }} 到期</span>
     </div>

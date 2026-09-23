@@ -104,7 +104,6 @@ h1, h2, h3, h4 { margin: 0; }
 .btn--danger { border-color: var(--danger-line); color: var(--danger); }
 .btn--danger-solid { background: var(--danger); border-color: var(--danger); color: var(--cream); font-weight: 700; }
 .btn--sm { font-size: 13px; padding: 8px 16px; }
-.btn--link { border: none; padding: 0; text-decoration: underline; }
 
 /* ---------- 表單 ---------- */
 .field { display: block; }
@@ -269,7 +268,6 @@ h1, h2, h3, h4 { margin: 0; }
 .sheet__head h3 { font-size: 22px; font-weight: 700; }
 .sheet__close { background: none; border: none; font-size: 20px; color: var(--fainter); line-height: 1; padding: 0; }
 .sheet__foot { margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
-.sheet__note { margin-top: 12px; font-size: 12px; color: var(--fainter); text-align: center; }
 
 /* ---------- 空狀態 ---------- */
 .empty {

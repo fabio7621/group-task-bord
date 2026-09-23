@@ -1,4 +1,4 @@
-import { col, docOf } from '../db.js'
+import { col } from '../db.js'
 import { AppError } from '../validate.js'
 
 /**
@@ -12,11 +12,11 @@ export async function postTx (session, { groupId, holderId, issuerId, amount, ki
   }
 
   if (amount < 0) {
-    const updated = docOf(await col('balances').findOneAndUpdate(
+    const updated = await col('balances').findOneAndUpdate(
       { groupId, holderId, issuerId, amount: { $gte: -amount } },
       { $inc: { amount } },
       { session, returnDocument: 'after' }
-    ))
+    )
     if (!updated) throw new AppError('INSUFFICIENT_POINTS', '點數不足')
   } else {
     await col('balances').updateOne(

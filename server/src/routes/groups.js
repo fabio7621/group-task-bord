@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { col, withTx } from '../db.js'
 import { requireAuth, requireMember } from '../auth.js'
-import { AppError, LIMITS, str } from '../validate.js'
+import { AppError, LIMITS, parseText } from '../validate.js'
 import { balancesOf } from '../services/points.js'
 import { leaveGroup } from '../services/membership.js'
 import { memberNames } from '../services/shape.js'
@@ -18,7 +18,7 @@ const newInviteCode = () =>
 router.get('/', async (req, res, next) => {
   try {
     const memberships = await col('members').find({ userId: req.user._id }).toArray()
-    const groupIds = memberships.map((m) => m.groupId)
+    const groupIds = memberships.map((membership) => membership.groupId)
     const groups = await col('groups').find({ _id: { $in: groupIds } }).toArray()
 
     const cards = await Promise.all(groups.map(async (group) => ({
@@ -42,7 +42,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const name = str(req.body.name, '組別名稱', LIMITS.groupName)
+    const name = parseText(req.body.name, '組別名稱', LIMITS.groupName)
     const now = new Date()
 
     let group = null
@@ -69,7 +69,7 @@ router.post('/', async (req, res, next) => {
 /** 邀請碼與邀請連結共用這一套驗證（規格 §4）。 */
 router.post('/join', async (req, res, next) => {
   try {
-    const code = str(req.body.code, '邀請碼', { min: 1, max: 32 }).toUpperCase()
+    const code = parseText(req.body.code, '邀請碼', { min: 1, max: 32 }).toUpperCase()
     const group = await col('groups').findOne({ inviteCode: code })
     if (!group) throw new AppError('INVALID_INVITE', '邀請連結已失效', 404)
 
@@ -101,11 +101,11 @@ router.get('/:groupId', requireMember, async (req, res, next) => {
         id: String(group._id),
         name: group.name,
         inviteCode: group.inviteCode,
-        members: members.map((m) => ({
-          id: String(m.userId),
-          displayName: m.user.displayName,
-          joinedAt: m.joinedAt.toISOString(),
-          isMe: String(m.userId) === String(req.user._id)
+        members: members.map((member) => ({
+          id: String(member.userId),
+          displayName: member.user.displayName,
+          joinedAt: member.joinedAt.toISOString(),
+          isMe: String(member.userId) === String(req.user._id)
         }))
       }
     })
@@ -121,7 +121,7 @@ router.get('/:groupId/leave-preview', requireMember, async (req, res, next) => {
     const me = req.user._id
     const names = await memberNames(groupId)
 
-    const [held, ownedByOthers, rewards, myTasks, executingTasks, pendingRedemptions, memberCount] =
+    const [held, issuedToOthers, rewards, myTasks, executingTasks, pendingRedemptions, memberCount] =
       await Promise.all([
         balancesOf(groupId, me),
         col('balances').find({ groupId, issuerId: me, amount: { $gt: 0 } }).toArray(),
@@ -134,14 +134,17 @@ router.get('/:groupId/leave-preview', requireMember, async (req, res, next) => {
 
     res.json({
       data: {
-        heldPoints: held.map((b) => ({ issuerName: names.get(String(b.issuerId)) || '已離開的成員', amount: b.amount })),
-        pointsOthersHold: ownedByOthers.reduce((sum, b) => sum + b.amount, 0),
-        rewards: rewards.map((r) => r.name),
-        tasksRemoved: myTasks.map((t) => t.title),
-        tasksReturned: executingTasks.map((t) => t.title),
-        redemptionsVoided: pendingRedemptions.map((r) => ({
-          rewardName: r.rewardName,
-          buyerName: names.get(String(r.buyerId)) || '已離開的成員'
+        heldPoints: held.map((balance) => ({
+          issuerName: names.get(String(balance.issuerId)) || '已離開的成員',
+          amount: balance.amount
+        })),
+        pointsOthersHold: issuedToOthers.reduce((sum, balance) => sum + balance.amount, 0),
+        rewards: rewards.map((reward) => reward.name),
+        tasksRemoved: myTasks.map((task) => task.title),
+        tasksReturned: executingTasks.map((task) => task.title),
+        redemptionsVoided: pendingRedemptions.map((redemption) => ({
+          rewardName: redemption.rewardName,
+          buyerName: names.get(String(redemption.buyerId)) || '已離開的成員'
         })),
         isLastMember: memberCount === 1
       }

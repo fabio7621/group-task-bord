@@ -4,7 +4,7 @@ import { AppError } from './validate.js'
  * 記憶體版的速率限制，擋登入與註冊的暴力嘗試。
  * ponytail: 單一行程的 Map，之後要跑多個後端實例再換成 Redis。
  */
-export function rateLimit ({ windowMs = 60_000, max = 20, keyOf = (req) => req.ip } = {}) {
+export function rateLimit ({ windowMs, max, keyOf }) {
   const hits = new Map()
 
   return (req, res, next) => {

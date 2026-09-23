@@ -1,4 +1,5 @@
 import { auth, clearSession } from './store.js'
+import { router } from './router.js'
 
 export class ApiError extends Error {
   constructor (code, message) {
@@ -6,9 +7,6 @@ export class ApiError extends Error {
     this.code = code
   }
 }
-
-let onUnauthorized = () => {}
-export const setUnauthorizedHandler = (handler) => { onUnauthorized = handler }
 
 export async function api (path, { method = 'GET', body } = {}) {
   let response
@@ -29,9 +27,12 @@ export async function api (path, { method = 'GET', body } = {}) {
 
   if (!response.ok) {
     const { code = 'SERVER_ERROR', message = '發生錯誤，請稍後再試' } = payload.error || {}
+    // token 過期或無效：清掉登入狀態，回登入頁並記住原本要去的頁面
     if (response.status === 401) {
       clearSession()
-      onUnauthorized()
+      // 動態載入，免得登入頁也被迫下載 socket.io-client
+      import('./socket.js').then(({ disconnectSocket }) => disconnectSocket())
+      router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
     }
     throw new ApiError(code, message)
   }

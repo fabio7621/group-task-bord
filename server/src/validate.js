@@ -22,32 +22,35 @@ export const LIMITS = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export function str (value, field, { min, max }, { optional = false } = {}) {
+/** label 會直接出現在錯誤訊息裡，例如「標題至少 1 字」。 */
+export function parseText (value, label, { min, max }) {
   if (value === undefined || value === null || value === '') {
-    if (optional || min === 0) return ''
-    throw new AppError('INVALID_INPUT', `請填寫${field}`)
+    if (min === 0) return ''
+    throw new AppError('INVALID_INPUT', `請填寫${label}`)
   }
-  if (typeof value !== 'string') throw new AppError('INVALID_INPUT', `${field}格式不正確`)
+  if (typeof value !== 'string') throw new AppError('INVALID_INPUT', `${label}格式不正確`)
   const trimmed = value.trim()
-  if (trimmed.length < min) throw new AppError('INVALID_INPUT', `${field}至少 ${min} 字`)
-  if (trimmed.length > max) throw new AppError('INVALID_INPUT', `${field}最多 ${max} 字`)
+  if (trimmed.length < min) throw new AppError('INVALID_INPUT', `${label}至少 ${min} 字`)
+  if (trimmed.length > max) throw new AppError('INVALID_INPUT', `${label}最多 ${max} 字`)
   return trimmed
 }
 
-export function int (value, field, { min, max }) {
-  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim())
-  if (!Number.isInteger(n)) throw new AppError('INVALID_INPUT', `${field}必須是整數`)
-  if (n < min || n > max) throw new AppError('INVALID_INPUT', `${field}必須在 ${min}～${max} 之間`)
-  return n
+export function parseInteger (value, label, { min, max }) {
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim())
+  if (!Number.isInteger(parsed)) throw new AppError('INVALID_INPUT', `${label}必須是整數`)
+  if (parsed < min || parsed > max) {
+    throw new AppError('INVALID_INPUT', `${label}必須在 ${min}～${max} 之間`)
+  }
+  return parsed
 }
 
-export function email (value) {
-  const v = str(value, 'email', { min: 3, max: 200 }).toLowerCase()
-  if (!EMAIL_RE.test(v)) throw new AppError('INVALID_INPUT', 'email 格式不正確')
-  return v
+export function parseEmail (value) {
+  const normalized = parseText(value, 'email', { min: 3, max: 200 }).toLowerCase()
+  if (!EMAIL_RE.test(normalized)) throw new AppError('INVALID_INPUT', 'email 格式不正確')
+  return normalized
 }
 
-export function password (value) {
+export function parsePassword (value) {
   if (typeof value !== 'string' || value.length < LIMITS.password.min) {
     throw new AppError('INVALID_INPUT', `密碼至少 ${LIMITS.password.min} 碼`)
   }
@@ -58,15 +61,15 @@ export function password (value) {
 }
 
 /** 截止日期選填，只顯示用，過期不影響規則（規格 §5）。 */
-export function optionalDate (value, field) {
+export function parseOptionalDate (value, label) {
   if (!value) return null
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) throw new AppError('INVALID_INPUT', `${field}格式不正確`)
-  return d
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) throw new AppError('INVALID_INPUT', `${label}格式不正確`)
+  return parsed
 }
 
-export function coordinate (value, field) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) throw new AppError('INVALID_INPUT', `${field}格式不正確`)
-  return Math.round(Math.min(Math.max(n, 0), 10000))
+export function parseCoordinate (value, label) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) throw new AppError('INVALID_INPUT', `${label}格式不正確`)
+  return Math.round(Math.min(Math.max(parsed, 0), 10000))
 }

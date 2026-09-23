@@ -20,8 +20,8 @@ async function submit () {
     const data = await post('/auth/login', { email: email.value, password: password.value })
     setSession(data)
     await landAfterAuth(router, route)
-  } catch (e) {
-    error.value = e.message
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }

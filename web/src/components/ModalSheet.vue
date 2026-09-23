@@ -7,12 +7,12 @@ defineProps({
 })
 const emit = defineEmits(['close'])
 
-const onKey = (event) => {
+const closeOnEscape = (event) => {
   if (event.key === 'Escape') emit('close')
 }
 
-onMounted(() => window.addEventListener('keydown', onKey))
-onUnmounted(() => window.removeEventListener('keydown', onKey))
+onMounted(() => window.addEventListener('keydown', closeOnEscape))
+onUnmounted(() => window.removeEventListener('keydown', closeOnEscape))
 </script>
 
 <template>

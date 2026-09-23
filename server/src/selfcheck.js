@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import assert from 'node:assert/strict'
 import { ObjectId } from 'mongodb'
-import { close, col, connect, docOf, withTx } from './db.js'
+import { close, col, connect, withTx } from './db.js'
 import { postTx, balanceOf } from './services/points.js'
 import { redeemReward } from './services/rewards.js'
 import { leaveGroup } from './services/membership.js'
@@ -61,7 +61,7 @@ async function main () {
       { _id: taskId, status: 'open' },
       { $set: { status: 'claimed', assigneeId: userId } },
       { returnDocument: 'after' }
-    ).then(docOf)
+    )
 
     const claims = await Promise.all([claim(users.racerA), claim(users.racerB)])
     const winners = claims.filter(Boolean)

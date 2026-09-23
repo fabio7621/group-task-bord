@@ -14,11 +14,11 @@ const notice = ref('')
 const rows = computed(() => (tab.value === 'mine' ? mine.value : received.value))
 
 const { groupId, group } = useGroup({
-  'rewards:changed': () => load(),
-  reconnect: () => load()
+  'rewards:changed': () => loadRedemptions(),
+  reconnect: () => loadRedemptions()
 })
 
-async function load () {
+async function loadRedemptions () {
   const data = await get(`/groups/${groupId.value}/redemptions`)
   mine.value = data.mine
   received.value = data.received
@@ -26,7 +26,7 @@ async function load () {
 
 onMounted(async () => {
   try {
-    await load()
+    await loadRedemptions()
   } finally {
     loading.value = false
   }
@@ -36,7 +36,7 @@ async function fulfill (redemption) {
   notice.value = ''
   try {
     await post(`/groups/${groupId.value}/redemptions/${redemption.id}/fulfill`)
-    await load()
+    await loadRedemptions()
   } catch (error) {
     notice.value = error.message
   }

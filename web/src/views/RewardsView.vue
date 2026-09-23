@@ -14,19 +14,19 @@ const loading = ref(true)
 const notice = ref('')
 
 const dialog = ref('')
-const target = ref(null)
+const activeReward = ref(null)
 const error = ref('')
 const busy = ref(false)
 const form = ref({ name: '', description: '', cost: 20, stock: 1 })
 const stockInput = ref(0)
 
 const { groupId, group } = useGroup({
-  'rewards:changed': () => load(),
-  'points:changed': () => load(),
-  reconnect: () => load()
+  'rewards:changed': () => loadRewards(),
+  'points:changed': () => loadRewards(),
+  reconnect: () => loadRewards()
 })
 
-async function load () {
+async function loadRewards () {
   const data = await get(`/groups/${groupId.value}/rewards`)
   rewards.value = data.rewards
   myBalances.value = data.myBalances
@@ -34,7 +34,7 @@ async function load () {
 
 onMounted(async () => {
   try {
-    await load()
+    await loadRewards()
   } finally {
     loading.value = false
   }
@@ -46,7 +46,7 @@ const balanceWith = (issuerId) =>
 const myRewards = computed(() => rewards.value.filter((reward) => reward.ownerId === meId.value))
 
 /** 依提供者分組（design.md §7） */
-const otherGroups = computed(() => {
+const rewardsByOwner = computed(() => {
   const grouped = new Map()
   for (const reward of rewards.value) {
     if (reward.ownerId === meId.value) continue
@@ -66,7 +66,7 @@ function redeemState (reward) {
 
 function openDialog (name, reward = null) {
   error.value = ''
-  target.value = reward
+  activeReward.value = reward
   if (name === 'create') form.value = { name: '', description: '', cost: 20, stock: 1 }
   if (name === 'stock') stockInput.value = reward.stock
   dialog.value = name
@@ -83,9 +83,9 @@ async function createReward () {
       stock: Number(form.value.stock)
     })
     dialog.value = ''
-    await load()
-  } catch (e) {
-    error.value = e.message
+    await loadRewards()
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }
@@ -95,11 +95,11 @@ async function saveStock () {
   error.value = ''
   busy.value = true
   try {
-    await patch(`/groups/${groupId.value}/rewards/${target.value.id}/stock`, { stock: Number(stockInput.value) })
+    await patch(`/groups/${groupId.value}/rewards/${activeReward.value.id}/stock`, { stock: Number(stockInput.value) })
     dialog.value = ''
-    await load()
-  } catch (e) {
-    error.value = e.message
+    await loadRewards()
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }
@@ -109,9 +109,9 @@ async function removeReward (reward) {
   notice.value = ''
   try {
     await del(`/groups/${groupId.value}/rewards/${reward.id}`)
-    await load()
-  } catch (e) {
-    notice.value = e.message
+    await loadRewards()
+  } catch (apiError) {
+    notice.value = apiError.message
   }
 }
 
@@ -119,14 +119,14 @@ async function confirmRedeem () {
   error.value = ''
   busy.value = true
   try {
-    await post(`/groups/${groupId.value}/rewards/${target.value.id}/redeem`)
+    await post(`/groups/${groupId.value}/rewards/${activeReward.value.id}/redeem`)
     dialog.value = ''
-    notice.value = `已兌換「${target.value.name}」，等提供者兌現。`
-    await load()
-  } catch (e) {
+    notice.value = `已兌換「${activeReward.value.name}」，等提供者兌現。`
+    await loadRewards()
+  } catch (apiError) {
     // 失敗（點數不足或剛好被換完）顯示原因，不扣點（design.md §7-3）
-    error.value = e.message
-    await load()
+    error.value = apiError.message
+    await loadRewards()
   } finally {
     busy.value = false
   }
@@ -163,7 +163,7 @@ async function confirmRedeem () {
     </div>
 
     <div v-else style="margin-top: 26px; display: flex; flex-direction: column; gap: 22px">
-      <section v-for="owner in otherGroups" :key="owner.ownerId">
+      <section v-for="owner in rewardsByOwner" :key="owner.ownerId">
         <div style="font-size: 15px; font-weight: 700; color: var(--muted)">
           {{ owner.ownerName }} 提供
           <span style="font-weight: 400; color: var(--fainter)">· 你有 {{ balanceWith(owner.ownerId) }} 點</span>
@@ -274,22 +274,22 @@ async function confirmRedeem () {
 
   <ModalSheet v-if="dialog === 'redeem'" title="確認兌換" width="420px" @close="dialog = ''">
     <div style="margin-top: 16px; background: var(--panel); border-radius: 4px; padding: 16px">
-      <div style="font-size: 17px; font-weight: 700">{{ target.name }}</div>
-      <div style="margin-top: 4px; font-size: 13px; color: var(--sub)">{{ target.ownerName }} 提供</div>
+      <div style="font-size: 17px; font-weight: 700">{{ activeReward.name }}</div>
+      <div style="margin-top: 4px; font-size: 13px; color: var(--sub)">{{ activeReward.ownerName }} 提供</div>
     </div>
 
     <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
       <div style="display: flex; justify-content: space-between">
-        <span class="muted">需要點數</span><span class="num" style="font-size: 17px">{{ target.cost }}</span>
+        <span class="muted">需要點數</span><span class="num" style="font-size: 17px">{{ activeReward.cost }}</span>
       </div>
       <div style="display: flex; justify-content: space-between">
         <span class="muted">目前餘額</span>
-        <span class="num" style="font-size: 17px">{{ balanceWith(target.ownerId) }}</span>
+        <span class="num" style="font-size: 17px">{{ balanceWith(activeReward.ownerId) }}</span>
       </div>
       <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px dashed var(--line-strong)">
         <span class="muted">兌換後餘額</span>
         <span class="num" style="font-size: 17px; color: var(--brick)">
-          {{ balanceWith(target.ownerId) - target.cost }}
+          {{ balanceWith(activeReward.ownerId) - activeReward.cost }}
         </span>
       </div>
     </div>

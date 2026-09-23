@@ -23,23 +23,23 @@ const detailId = ref('')
 const detail = computed(() => tasks.value.find((task) => task.id === detailId.value) || null)
 
 const { groupId, group } = useGroup({
-  'task:upsert': (task) => upsert(task),
+  'task:upsert': (task) => upsertTask(task),
   'task:remove': ({ id }) => { tasks.value = tasks.value.filter((task) => task.id !== id) },
   'task:moved': ({ id, x, y }) => {
-    const task = tasks.value.find((t) => t.id === id)
-    if (task && !dragging.value?.id) Object.assign(task, { x, y })
+    const moved = tasks.value.find((task) => task.id === id)
+    if (moved && !dragging.value?.id) Object.assign(moved, { x, y })
   },
   // 斷線重連後重新取得整個任務板的最新狀態（規格 §10）
-  reconnect: () => load()
+  reconnect: () => loadBoard()
 })
 
-function upsert (task) {
-  const index = tasks.value.findIndex((t) => t.id === task.id)
+function upsertTask (task) {
+  const index = tasks.value.findIndex((existing) => existing.id === task.id)
   if (index === -1) tasks.value.push(task)
   else tasks.value[index] = task
 }
 
-async function load () {
+async function loadBoard () {
   const data = await get(`/groups/${groupId.value}/tasks`)
   tasks.value = data.tasks
   board.value = data.board
@@ -47,20 +47,24 @@ async function load () {
 
 onMounted(async () => {
   try {
-    await load()
-    const wanted = route.query.task
-    if (typeof wanted === 'string' && tasks.value.some((task) => task.id === wanted)) detailId.value = wanted
+    await loadBoard()
+    const wantedTaskId = route.query.task
+    if (typeof wantedTaskId === 'string' && tasks.value.some((task) => task.id === wantedTaskId)) detailId.value = wantedTaskId
   } finally {
     loading.value = false
   }
 })
 
 /* ---------- 拖曳：只有發布者能移動自己的便利貼，放開後才儲存（規格 §9） ---------- */
+// 便利貼尺寸，和 styles.css 的 --note-w / --note-h、server 的 shape.js NOTE 一致
+const NOTE = { width: 232, height: 150 }
+const MOBILE_MAX_WIDTH = 820
+
 const dragging = ref(null)
 const canDrag = (task) => task.authorId === meId.value
 
 function startDrag (task, event) {
-  if (!canDrag(task) || window.innerWidth <= 820 || event.button !== 0) return
+  if (!canDrag(task) || window.innerWidth <= MOBILE_MAX_WIDTH || event.button !== 0) return
   dragging.value = {
     id: task.id,
     offsetX: event.clientX - task.x,
@@ -70,10 +74,10 @@ function startDrag (task, event) {
   event.currentTarget.setPointerCapture?.(event.pointerId)
 }
 
-function onDrag (task, event) {
+function moveDrag (task, event) {
   if (dragging.value?.id !== task.id) return
-  const maxX = Math.max(0, board.value.width - 232)
-  const maxY = Math.max(0, board.value.height - 150)
+  const maxX = Math.max(0, board.value.width - NOTE.width)
+  const maxY = Math.max(0, board.value.height - NOTE.height)
   task.x = Math.min(Math.max(event.clientX - dragging.value.offsetX, 0), maxX)
   task.y = Math.min(Math.max(event.clientY - dragging.value.offsetY, 0), maxY)
   dragging.value.moved = true
@@ -90,13 +94,13 @@ async function endDrag (task, event) {
     await patch(`/groups/${groupId.value}/tasks/${task.id}/position`, { x: task.x, y: task.y })
   } catch (error) {
     notice.value = error.message
-    await load()
+    await loadBoard()
   }
 }
 
 function onNoteClick (task) {
   // 桌機的點擊由 endDrag 判斷（沒有移動才算點擊），手機直接開詳情
-  if (window.innerWidth <= 820 || !canDrag(task)) openDetail(task)
+  if (window.innerWidth <= MOBILE_MAX_WIDTH || !canDrag(task)) openDetail(task)
 }
 
 const openDetail = (task) => { detailId.value = task.id }
@@ -114,20 +118,20 @@ function openEdit (task) {
 }
 
 async function saveTask (payload) {
-  const base = `/groups/${groupId.value}/tasks`
+  const tasksPath = `/groups/${groupId.value}/tasks`
   const saved = formTask.value
-    ? await patch(`${base}/${formTask.value.id}`, payload)
-    : await post(base, payload)
-  upsert(saved)
+    ? await patch(`${tasksPath}/${formTask.value.id}`, payload)
+    : await post(tasksPath, payload)
+  upsertTask(saved)
   formOpen.value = false
 }
 
-async function act (task, action) {
+async function runTaskAction (task, action) {
   notice.value = ''
   try {
     if (action === 'delete') {
       await del(`/groups/${groupId.value}/tasks/${task.id}`)
-      tasks.value = tasks.value.filter((t) => t.id !== task.id)
+      tasks.value = tasks.value.filter((other) => other.id !== task.id)
       detailId.value = ''
       return
     }
@@ -136,12 +140,12 @@ async function act (task, action) {
       notice.value = '已經提醒發布者了'
       return
     }
-    upsert(await post(`/groups/${groupId.value}/tasks/${task.id}/${action}`))
+    upsertTask(await post(`/groups/${groupId.value}/tasks/${task.id}/${action}`))
   } catch (error) {
     notice.value = error.message
     // 認領失敗（已被別人搶先）時要更新畫面（design.md §6-2）
     if (error.code === 'TASK_ALREADY_CLAIMED' || error.code === 'TASK_STATE_CHANGED') {
-      await load()
+      await loadBoard()
       detailId.value = ''
     }
   }
@@ -181,7 +185,7 @@ async function act (task, action) {
           :class="{ 'note--draggable': canDrag(task), 'note--dragging': dragging?.id === task.id }"
           :style="{ left: task.x + 'px', top: task.y + 'px' }"
           @pointerdown="startDrag(task, $event)"
-          @pointermove="onDrag(task, $event)"
+          @pointermove="moveDrag(task, $event)"
           @pointerup="endDrag(task, $event)"
           @click="onNoteClick(task)"
         >
@@ -192,7 +196,7 @@ async function act (task, action) {
       <!-- 手機：自動排列成清單，不提供拖曳（規格 §9） -->
       <div class="board__list">
         <div v-for="task in tasks" :key="task.id" @click="openDetail(task)">
-          <StickyNote :task="task" :me-id="meId" />
+          <StickyNote :task="task" :me-id="meId" :tilted="false" />
         </div>
       </div>
     </div>
@@ -204,7 +208,7 @@ async function act (task, action) {
     v-if="detail"
     :task="detail"
     :me-id="meId"
-    @act="act(detail, $event)"
+    @act="runTaskAction(detail, $event)"
     @edit="openEdit(detail)"
     @close="detailId = ''"
   />

@@ -36,8 +36,8 @@ async function submit () {
       points,
       dueDate: form.value.dueDate || null
     })
-  } catch (e) {
-    error.value = e.message
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }

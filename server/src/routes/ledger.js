@@ -10,11 +10,8 @@ import { broadcast } from '../realtime.js'
 const router = Router({ mergeParams: true })
 router.use(requireAuth, requireMember)
 
-const REF_LABEL = {
-  earn: (ref) => ref?.title || '任務',
-  redeem: (ref) => ref?.name || '獎品',
-  void: (ref) => ref?.reason || '作廢'
-}
+/** earn 帶 title、redeem 帶 name、void 帶 reason。 */
+const refLabel = (ref) => ref?.title || ref?.name || ref?.reason || ''
 
 /** 餘額由交易紀錄加總（規格 §6、design.md §8）。 */
 router.get('/points', async (req, res, next) => {
@@ -24,16 +21,16 @@ router.get('/points', async (req, res, next) => {
       col('pointTx').find({ groupId: req.groupId, holderId: req.user._id }).sort({ at: -1 }).limit(200).toArray()
     ])
     const names = await userNames([
-      ...balances.map((b) => b.issuerId),
+      ...balances.map((balance) => balance.issuerId),
       ...transactions.map((tx) => tx.issuerId)
     ])
 
     res.json({
       data: {
-        balances: balances.map((b) => ({
-          issuerId: String(b.issuerId),
-          issuerName: names.get(String(b.issuerId)) || '已離開的成員',
-          amount: b.amount
+        balances: balances.map((balance) => ({
+          issuerId: String(balance.issuerId),
+          issuerName: names.get(String(balance.issuerId)) || '已離開的成員',
+          amount: balance.amount
         })),
         transactions: transactions.map((tx) => ({
           id: String(tx._id),
@@ -41,7 +38,7 @@ router.get('/points', async (req, res, next) => {
           kind: tx.kind,
           issuerName: names.get(String(tx.issuerId)) || '已離開的成員',
           amount: tx.amount,
-          label: REF_LABEL[tx.kind]?.(tx.ref) ?? ''
+          label: refLabel(tx.ref)
         }))
       }
     })
@@ -57,14 +54,14 @@ router.get('/redemptions', async (req, res, next) => {
       col('redemptions').find({ groupId: req.groupId, ownerId: req.user._id }).sort({ createdAt: -1 }).toArray()
     ])
 
-    const all = [...mine, ...received]
-    const [names, current] = await Promise.all([
-      userNames(all.flatMap((r) => [r.ownerId, r.buyerId])),
+    const allRedemptions = [...mine, ...received]
+    const [names, currentMembers] = await Promise.all([
+      userNames(allRedemptions.flatMap((redemption) => [redemption.ownerId, redemption.buyerId])),
       memberNames(req.groupId)
     ])
-    const withOwnerLeft = (r) => ({
-      ...shapeRedemption(r, names),
-      ownerLeft: !current.has(String(r.ownerId))
+    const withOwnerLeft = (redemption) => ({
+      ...shapeRedemption(redemption, names),
+      ownerLeft: !currentMembers.has(String(redemption.ownerId))
     })
 
     res.json({ data: { mine: mine.map(withOwnerLeft), received: received.map(withOwnerLeft) } })

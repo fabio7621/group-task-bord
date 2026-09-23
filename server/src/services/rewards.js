@@ -1,4 +1,4 @@
-import { col, docOf } from '../db.js'
+import { col } from '../db.js'
 import { AppError } from '../validate.js'
 import { postTx } from './points.js'
 
@@ -7,11 +7,11 @@ import { postTx } from './points.js'
  * 庫存與餘額都用條件更新決定勝負，所以同時兌換只有一人成功，另一人不被扣點。
  */
 export async function redeemReward (session, { groupId, rewardId, buyerId, at = new Date() }) {
-  const taken = docOf(await col('rewards').findOneAndUpdate(
+  const taken = await col('rewards').findOneAndUpdate(
     { _id: rewardId, groupId, active: true, stock: { $gt: 0 } },
     { $inc: { stock: -1 } },
     { session, returnDocument: 'after' }
-  ))
+  )
   if (!taken) throw new AppError('OUT_OF_STOCK', '這個獎品已經換完了', 409)
 
   // 只能用獎品提供者發行的點數兌換（規格 §7）

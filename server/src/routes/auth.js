@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { col } from '../db.js'
 import { hashPassword, checkPassword, signToken, requireAuth, publicUser } from '../auth.js'
-import { AppError, LIMITS, email as parseEmail, password as parsePassword, str } from '../validate.js'
+import { AppError, LIMITS, parseEmail, parsePassword, parseText } from '../validate.js'
 import { rateLimit } from '../rateLimit.js'
 
 const router = Router()
@@ -17,7 +17,7 @@ router.post('/register', async (req, res, next) => {
   try {
     const email = parseEmail(req.body.email)
     const password = parsePassword(req.body.password)
-    const displayName = str(req.body.displayName, '顯示名稱', LIMITS.displayName)
+    const displayName = parseText(req.body.displayName, '顯示名稱', LIMITS.displayName)
 
     if (req.body.confirmPassword !== password) {
       throw new AppError('PASSWORD_MISMATCH', '兩次輸入的密碼不一致')

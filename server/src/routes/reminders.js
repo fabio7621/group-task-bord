@@ -21,14 +21,14 @@ router.get('/', async (req, res, next) => {
     ]).toArray()
 
     res.json({
-      data: reminders.map((r) => ({
-        id: String(r._id),
-        groupId: String(r.groupId),
-        groupName: r.group.name,
-        taskId: String(r.taskId),
-        taskTitle: r.task.title,
-        fromName: r.from.displayName,
-        at: r.at.toISOString()
+      data: reminders.map((reminder) => ({
+        id: String(reminder._id),
+        groupId: String(reminder.groupId),
+        groupName: reminder.group.name,
+        taskId: String(reminder.taskId),
+        taskTitle: reminder.task.title,
+        fromName: reminder.from.displayName,
+        at: reminder.at.toISOString()
       }))
     })
   } catch (error) {

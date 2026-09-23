@@ -27,9 +27,9 @@ async function submit () {
     const data = await post('/auth/register', form.value)
     setSession(data)
     await landAfterAuth(router, route)
-  } catch (e) {
-    if (e.code === 'EMAIL_TAKEN') fieldError.value = e.message
-    else error.value = e.message
+  } catch (apiError) {
+    if (apiError.code === 'EMAIL_TAKEN') fieldError.value = apiError.message
+    else error.value = apiError.message
   } finally {
     busy.value = false
   }

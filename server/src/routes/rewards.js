@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { col, withTx } from '../db.js'
 import { requireAuth, requireMember } from '../auth.js'
-import { AppError, LIMITS, int, str } from '../validate.js'
+import { AppError, LIMITS, parseInteger, parseText } from '../validate.js'
 import { balancesOf } from '../services/points.js'
 import { redeemReward } from '../services/rewards.js'
 import { memberNames, shapeReward } from '../services/shape.js'
@@ -33,11 +33,11 @@ router.get('/', async (req, res, next) => {
 
     res.json({
       data: {
-        rewards: rewards.map((r) => shapeReward(r, names)),
-        myBalances: balances.map((b) => ({
-          issuerId: String(b.issuerId),
-          issuerName: names.get(String(b.issuerId)) || '已離開的成員',
-          amount: b.amount
+        rewards: rewards.map((reward) => shapeReward(reward, names)),
+        myBalances: balances.map((balance) => ({
+          issuerId: String(balance.issuerId),
+          issuerName: names.get(String(balance.issuerId)) || '已離開的成員',
+          amount: balance.amount
         }))
       }
     })
@@ -51,10 +51,10 @@ router.post('/', async (req, res, next) => {
     const reward = {
       groupId: req.groupId,
       ownerId: req.user._id,
-      name: str(req.body.name, '獎品名稱', LIMITS.rewardName),
-      description: str(req.body.description, '說明', LIMITS.rewardDescription, { optional: true }),
-      cost: int(req.body.cost, '兌換點數', LIMITS.points),
-      stock: int(req.body.stock, '庫存', { min: 1, max: 999 }),
+      name: parseText(req.body.name, '獎品名稱', LIMITS.rewardName),
+      description: parseText(req.body.description, '說明', LIMITS.rewardDescription),
+      cost: parseInteger(req.body.cost, '兌換點數', LIMITS.points),
+      stock: parseInteger(req.body.stock, '庫存', { min: 1, max: 999 }),
       active: true,
       createdAt: new Date()
     }
@@ -74,7 +74,7 @@ router.patch('/:rewardId/stock', async (req, res, next) => {
     if (String(reward.ownerId) !== String(req.user._id)) {
       throw new AppError('FORBIDDEN', '只能調整自己上架的獎品', 403)
     }
-    const stock = int(req.body.stock, '庫存', { min: 0, max: 999 })
+    const stock = parseInteger(req.body.stock, '庫存', { min: 0, max: 999 })
     await col('rewards').updateOne({ _id: reward._id }, { $set: { stock } })
 
     broadcast(req.groupId, 'rewards:changed', { groupId: String(req.groupId) })

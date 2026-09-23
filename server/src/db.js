@@ -18,9 +18,6 @@ export function db () {
 
 export const col = (name) => db().collection(name)
 
-/** 驅動 v6 的 findOneAndUpdate 直接回傳文件，舊版包在 value 裡，兩種都接。 */
-export const docOf = (res) => (res && typeof res === 'object' && 'value' in res ? res.value : res)
-
 async function ensureIndexes () {
   await col('users').createIndex({ email: 1 }, { unique: true })
   await col('groups').createIndex({ inviteCode: 1 }, { unique: true })

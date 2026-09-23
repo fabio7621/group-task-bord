@@ -44,8 +44,8 @@ async function createGroup () {
   try {
     const group = await post('/groups', { name: groupName.value })
     router.push({ name: 'board', params: { id: group.id } })
-  } catch (e) {
-    error.value = e.message
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }
@@ -57,8 +57,8 @@ async function joinGroupByCode () {
   try {
     const group = await post('/groups/join', { code: inviteCode.value })
     router.push({ name: 'board', params: { id: group.id } })
-  } catch (e) {
-    error.value = e.message
+  } catch (apiError) {
+    error.value = apiError.message
   } finally {
     busy.value = false
   }

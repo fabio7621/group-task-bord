@@ -13,11 +13,11 @@ const STICKY_COLORS = ['', 'sticky--blue', 'sticky--green', 'sticky--orange']
 const COLUMNS = '130px 80px 90px 1fr 80px'
 
 const { groupId, group } = useGroup({
-  'points:changed': () => load(),
-  reconnect: () => load()
+  'points:changed': () => loadPoints(),
+  reconnect: () => loadPoints()
 })
 
-async function load () {
+async function loadPoints () {
   const data = await get(`/groups/${groupId.value}/points`)
   balances.value = data.balances
   transactions.value = data.transactions
@@ -25,7 +25,7 @@ async function load () {
 
 onMounted(async () => {
   try {
-    await load()
+    await loadPoints()
   } finally {
     loading.value = false
   }

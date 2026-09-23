@@ -16,7 +16,7 @@ const status = computed(() => props.task.status)
 /** 刪除與放棄需要再按一次確認（design.md §6-2） */
 const confirming = ref('')
 
-function run (action, needsConfirm = false) {
+function emitAction (action, needsConfirm = false) {
   if (needsConfirm && confirming.value !== action) {
     confirming.value = action
     return
@@ -67,27 +67,27 @@ function run (action, needsConfirm = false) {
       <template v-if="status === 'open'">
         <template v-if="isAuthor">
           <button class="btn btn--sm" @click="emit('edit')">修改</button>
-          <button class="btn btn--sm btn--danger" @click="run('delete', true)">
+          <button class="btn btn--sm btn--danger" @click="emitAction('delete', true)">
             {{ confirming === 'delete' ? '再按一次確認刪除' : '刪除' }}
           </button>
         </template>
-        <button v-else class="btn btn--primary" style="flex: 1" @click="run('claim')">認領這張便利貼</button>
+        <button v-else class="btn btn--primary" style="flex: 1" @click="emitAction('claim')">認領這張便利貼</button>
       </template>
 
       <template v-else-if="status === 'claimed' && isAssignee">
-        <button class="btn btn--primary" style="flex: 1" @click="run('submit')">回報完成</button>
-        <button class="btn btn--danger" @click="run('abandon', true)">
+        <button class="btn btn--primary" style="flex: 1" @click="emitAction('submit')">回報完成</button>
+        <button class="btn btn--danger" @click="emitAction('abandon', true)">
           {{ confirming === 'abandon' ? '再按一次確認放棄' : '放棄' }}
         </button>
       </template>
 
       <template v-else-if="status === 'submitted'">
-        <button v-if="isAuthor" class="btn btn--primary" style="flex: 1" @click="run('confirm')">
+        <button v-if="isAuthor" class="btn btn--primary" style="flex: 1" @click="emitAction('confirm')">
           確認完成，發出 {{ task.points }} 點
         </button>
         <template v-if="isAssignee">
-          <button class="btn btn--sm" @click="run('remind')">提醒</button>
-          <button class="btn btn--sm btn--danger" @click="run('abandon', true)">
+          <button class="btn btn--sm" @click="emitAction('remind')">提醒</button>
+          <button class="btn btn--sm btn--danger" @click="emitAction('abandon', true)">
             {{ confirming === 'abandon' ? '再按一次確認放棄' : '放棄' }}
           </button>
         </template>

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { col } from '../db.js'
-import { requireAuth, requireMember } from '../auth.js'
+import { requireAuth, requireMember } from '../middleware/auth.js'
 import { AppError } from '../validate.js'
 import { balancesOf } from '../services/points.js'
 import { memberNames, shapeRedemption, userNames } from '../services/shape.js'

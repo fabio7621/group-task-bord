@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { col } from '../db.js'
-import { hashPassword, checkPassword, signToken, requireAuth, publicUser } from '../auth.js'
+import { hashPassword, checkPassword, signToken, publicUser } from '../auth.js'
+import { requireAuth } from '../middleware/auth.js'
 import { AppError, LIMITS, parseEmail, parsePassword, parseText } from '../validate.js'
-import { rateLimit } from '../rateLimit.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 
 const router = Router()
 

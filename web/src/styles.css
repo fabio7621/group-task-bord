@@ -195,9 +195,14 @@ h1, h2, h3, h4 { margin: 0; }
   margin: 6px 20px 20px;
   background: var(--board);
   border-radius: 12px;
-  overflow: hidden;
+  /* 視窗比任務板窄時可橫向捲動，不會切掉便利貼 */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
+.board__inner { position: relative; height: 100%; }
 .board__note { position: absolute; }
+.board-gutter { padding-left: 28px; padding-right: 28px; }
+.board-gutter-m { margin-left: 28px; margin-right: 28px; }
 .board__list { display: none; }
 
 /* ---------- 卡片與清單 ---------- */
@@ -314,10 +319,13 @@ h1, h2, h3, h4 { margin: 0; }
   .form-row { flex-direction: column; }
 
   /* 便利貼自動排列成清單，不可拖曳（規格 §9） */
-  .board { position: static; margin: 0; padding: 0; background: none; height: auto !important; }
+  .board-gutter { padding-left: 16px; padding-right: 16px; }
+  .board-gutter-m { margin-left: 16px; margin-right: 16px; }
+  .board { position: static; margin: 0 16px 24px; padding: 0; background: none; height: auto !important; overflow: visible; }
   .board__note { position: static !important; transform: none !important; }
   .board__inner { display: none; }
-  .board__list { display: flex; flex-direction: column; gap: 14px; }
+  /* 平板一行兩三張，手機一張 */
+  .board__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
   .note { width: 100%; }
   .table__head { display: none; }
   .table__row { grid-template-columns: 1fr auto !important; gap: 4px 12px; }

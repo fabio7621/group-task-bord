@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
 import { col, withTx } from '../db.js'
-import { requireAuth, requireMember } from '../auth.js'
+import { requireAuth, requireMember } from '../middleware/auth.js'
 import { AppError, LIMITS, parseText } from '../validate.js'
 import { balancesOf } from '../services/points.js'
 import { leaveGroup } from '../services/membership.js'

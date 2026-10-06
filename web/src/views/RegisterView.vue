@@ -1,12 +1,10 @@
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { post } from '../api.js'
-import { setSession } from '../store.js'
-import { landAfterAuth } from '../session.js'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
 
-const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 
 const form = ref({ email: '', password: '', confirmPassword: '', displayName: '' })
 const error = ref('')
@@ -24,9 +22,8 @@ async function submit () {
 
   busy.value = true
   try {
-    const data = await post('/auth/register', form.value)
-    setSession(data)
-    await landAfterAuth(router, route)
+    await auth.register(form.value)
+    await auth.landAfterAuth(route.query.redirect)
   } catch (apiError) {
     if (apiError.code === 'EMAIL_TAKEN') fieldError.value = apiError.message
     else error.value = apiError.message

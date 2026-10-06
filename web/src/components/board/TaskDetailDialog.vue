@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
-import ModalSheet from './ModalSheet.vue'
-import { TASK_STATUS, dateTime, fullDate } from '../format.js'
+import ModalSheet from '../common/ModalSheet.vue'
+import { TASK_STATUS, dateTime, fullDate } from '../../lib/format.js'
 
 const props = defineProps({
   task: { type: Object, required: true },

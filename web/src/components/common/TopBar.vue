@@ -1,14 +1,12 @@
 <script setup>
-import { useRouter } from 'vue-router'
-import { auth, clearSession } from '../store.js'
-import { disconnectSocket } from '../socket.js'
+import { useAuthStore } from '../../stores/auth.js'
 
 const props = defineProps({
   groupId: { type: String, default: '' },
   groupName: { type: String, default: '冰箱便利貼任務板' }
 })
 
-const router = useRouter()
+const auth = useAuthStore()
 
 const tabs = [
   { name: 'board', label: '任務版' },
@@ -18,11 +16,6 @@ const tabs = [
   { name: 'members', label: '成員' }
 ]
 
-function logout () {
-  clearSession()
-  disconnectSocket()
-  router.push({ name: 'login' })
-}
 </script>
 
 <template>
@@ -42,7 +35,7 @@ function logout () {
 
     <div class="topbar__user">
       <span style="color: var(--ink)">{{ auth.user?.displayName }}</span>
-      <button class="btn btn--sm" @click="logout">登出</button>
+      <button class="btn btn--sm" @click="auth.clearSession()">登出</button>
     </div>
   </header>
 </template>

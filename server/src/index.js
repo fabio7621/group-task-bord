@@ -7,7 +7,7 @@ import { connect } from './db.js'
 import { secret } from './auth.js'
 import { initRealtime } from './realtime.js'
 import { seedIfEmpty } from './seed.js'
-import { AppError } from './validate.js'
+import { notFound, errorHandler } from './middleware/errorHandler.js'
 
 import authRoutes from './routes/auth.js'
 import groupRoutes from './routes/groups.js'
@@ -38,16 +38,8 @@ export function createApp () {
   app.use('/api/groups', groupRoutes)
   app.use('/api/groups/:groupId', ledgerRoutes)
 
-  app.use((req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: '找不到這個路徑' } }))
-
-  // 統一的錯誤格式：預期內的錯誤回代碼，其餘只記在伺服器端，不外流細節
-  app.use((error, req, res, next) => {
-    if (error instanceof AppError) {
-      return res.status(error.status).json({ error: { code: error.code, message: error.message } })
-    }
-    console.error('[unhandled]', req.method, req.originalUrl, error)
-    res.status(500).json({ error: { code: 'SERVER_ERROR', message: '伺服器發生錯誤，請稍後再試' } })
-  })
+  app.use(notFound)
+  app.use(errorHandler)
 
   return app
 }

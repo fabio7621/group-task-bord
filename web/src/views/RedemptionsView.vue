@@ -1,42 +1,27 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { get, post } from '../api.js'
-import { useGroup } from '../useGroup.js'
-import { REDEMPTION_STATUS, dateTime } from '../format.js'
-import TopBar from '../components/TopBar.vue'
+import { useRedemptionsStore } from '../stores/redemptions.js'
+import { useGroup } from '../composables/useGroup.js'
+import { REDEMPTION_STATUS, dateTime } from '../lib/format.js'
+import TopBar from '../components/common/TopBar.vue'
 
+const redemptions = useRedemptionsStore()
 const tab = ref('mine')
-const mine = ref([])
-const received = ref([])
-const loading = ref(true)
 const notice = ref('')
 
-const rows = computed(() => (tab.value === 'mine' ? mine.value : received.value))
+const rows = computed(() => (tab.value === 'mine' ? redemptions.mine : redemptions.received))
 
 const { groupId, group } = useGroup({
-  'rewards:changed': () => loadRedemptions(),
-  reconnect: () => loadRedemptions()
+  'rewards:changed': redemptions.reload,
+  reconnect: redemptions.reload
 })
 
-async function loadRedemptions () {
-  const data = await get(`/groups/${groupId.value}/redemptions`)
-  mine.value = data.mine
-  received.value = data.received
-}
-
-onMounted(async () => {
-  try {
-    await loadRedemptions()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => redemptions.load(groupId.value))
 
 async function fulfill (redemption) {
   notice.value = ''
   try {
-    await post(`/groups/${groupId.value}/redemptions/${redemption.id}/fulfill`)
-    await loadRedemptions()
+    await redemptions.fulfill(redemption.id)
   } catch (error) {
     notice.value = error.message
   }
@@ -55,7 +40,7 @@ async function fulfill (redemption) {
     </div>
 
     <p v-if="notice" class="alert" style="margin-top: 14px">{{ notice }}</p>
-    <p v-if="loading" class="faint" style="margin-top: 20px">載入中…</p>
+    <p v-if="redemptions.loading" class="faint" style="margin-top: 20px">載入中…</p>
 
     <p v-else-if="!rows.length" class="empty">
       {{ tab === 'mine' ? '你還沒有兌換過任何獎品。' : '還沒有人向你兌換獎品。' }}

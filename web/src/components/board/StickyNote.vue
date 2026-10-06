@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { TASK_STATUS, shortDate } from '../format.js'
+import { TASK_STATUS, shortDate } from '../../lib/format.js'
 
 const props = defineProps({
   task: { type: Object, required: true },

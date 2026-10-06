@@ -1,7 +1,7 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { get } from './api.js'
-import { joinGroup } from './socket.js'
+import { useGroupsStore } from '../stores/groups.js'
+import { joinGroup } from '../lib/socket.js'
 
 /**
  * 組別頁共用：載入組別資訊、加入即時同步房間、不是成員就導回組別列表。
@@ -10,13 +10,14 @@ import { joinGroup } from './socket.js'
 export function useGroup (handlers = {}) {
   const route = useRoute()
   const router = useRouter()
+  const groups = useGroupsStore()
   const groupId = computed(() => String(route.params.id))
-  const group = ref(null)
+  const group = computed(() => groups.current)
   let unsubscribe = null
 
   onMounted(async () => {
     try {
-      group.value = await get(`/groups/${groupId.value}`)
+      await groups.loadCurrent(groupId.value)
     } catch (error) {
       // 進入自己不是成員的組別頁面：導回組別列表（design.md 頁面總覽）
       if (error.code === 'NOT_MEMBER' || error.code === 'NOT_FOUND') {

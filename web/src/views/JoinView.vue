@@ -1,24 +1,26 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { post } from '../api.js'
-import { isLoggedIn, pendingInvite } from '../store.js'
+import { useGroupsStore } from '../stores/groups.js'
+import { useAuthStore } from '../stores/auth.js'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
+const groups = useGroupsStore()
 const failedCode = ref('')
 
 onMounted(async () => {
   const code = String(route.params.code || '').toUpperCase()
 
   // 未登入：記住邀請碼，登入或註冊完成後自動加入（規格 §4）
-  if (!isLoggedIn.value) {
-    pendingInvite.set(code)
+  if (!auth.isLoggedIn) {
+    auth.rememberInvite(code)
     return router.replace({ name: 'login', query: { redirect: route.fullPath } })
   }
 
   try {
-    const group = await post('/groups/join', { code })
+    const group = await groups.join(code)
     router.replace({ name: 'board', params: { id: group.id } })
   } catch {
     failedCode.value = code

@@ -1,4 +1,4 @@
-import { AppError } from './validate.js'
+import { AppError } from '../validate.js'
 
 /**
  * 記憶體版的速率限制，擋登入與註冊的暴力嘗試。

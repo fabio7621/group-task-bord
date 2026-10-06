@@ -1,15 +1,16 @@
 <script setup>
-import { ref } from 'vue'
-import ModalSheet from './ModalSheet.vue'
-import { dateInputValue } from '../format.js'
+import { computed, ref } from 'vue'
+import ModalSheet from '../common/ModalSheet.vue'
+import { dateInputValue } from '../../lib/format.js'
 
 const props = defineProps({
   /** null 表示發布新任務，有值表示修改 */
   task: { type: Object, default: null },
-  /** 非同步函式，失敗時丟出的訊息直接顯示在彈窗裡 */
-  save: { type: Function, required: true }
+  busy: { type: Boolean, default: false },
+  /** 父層送出失敗時的訊息 */
+  error: { type: String, default: '' }
 })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['submit', 'close'])
 
 const form = ref({
   title: props.task?.title || '',
@@ -17,30 +18,23 @@ const form = ref({
   points: props.task?.points ?? 10,
   dueDate: dateInputValue(props.task?.dueDate)
 })
-const error = ref('')
-const busy = ref(false)
+const invalid = ref('')
+const message = computed(() => invalid.value || props.error)
 
-async function submit () {
-  error.value = ''
+function submit () {
+  invalid.value = ''
   const points = Number(form.value.points)
   if (!Number.isInteger(points) || points < 1 || points > 100) {
-    error.value = '點數必須是 1～100 的整數'
+    invalid.value = '點數必須是 1～100 的整數'
     return
   }
 
-  busy.value = true
-  try {
-    await props.save({
-      title: form.value.title.trim(),
-      description: form.value.description.trim(),
-      points,
-      dueDate: form.value.dueDate || null
-    })
-  } catch (apiError) {
-    error.value = apiError.message
-  } finally {
-    busy.value = false
-  }
+  emit('submit', {
+    title: form.value.title.trim(),
+    description: form.value.description.trim(),
+    points,
+    dueDate: form.value.dueDate || null
+  })
 }
 </script>
 
@@ -71,7 +65,7 @@ async function submit () {
         </label>
       </div>
 
-      <p v-if="error" class="alert">{{ error }}</p>
+      <p v-if="message" class="alert">{{ message }}</p>
 
       <div class="sheet__foot">
         <button type="button" class="btn btn--sm" @click="emit('close')">取消</button>

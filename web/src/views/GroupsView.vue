@@ -1,68 +1,35 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { get, post } from '../api.js'
-import { dateTime } from '../format.js'
-import TopBar from '../components/TopBar.vue'
-import ModalSheet from '../components/ModalSheet.vue'
+import { useGroupsStore } from '../stores/groups.js'
+import { useSubmit } from '../composables/useSubmit.js'
+import TopBar from '../components/common/TopBar.vue'
+import CreateGroupDialog from '../components/groups/CreateGroupDialog.vue'
+import JoinGroupDialog from '../components/groups/JoinGroupDialog.vue'
+import RemindersDialog from '../components/groups/RemindersDialog.vue'
 
 const router = useRouter()
-
-const groups = ref([])
-const reminders = ref([])
-const loading = ref(true)
+const groups = useGroupsStore()
+const { busy, error, run, reset } = useSubmit()
 
 const dialog = ref('')
-const groupName = ref('')
-const inviteCode = ref('')
-const error = ref('')
-const busy = ref(false)
 
 const STICKY_COLORS = ['', 'sticky--blue', 'sticky--green', 'sticky--orange']
 
 onMounted(async () => {
-  try {
-    groups.value = await get('/groups')
-    reminders.value = await get('/reminders')
-    // 有人提醒我確認任務時，登入後自動跳出（規格 §5）
-    if (reminders.value.length) dialog.value = 'reminders'
-  } finally {
-    loading.value = false
-  }
+  await groups.loadList()
+  // 有人提醒我確認任務時，登入後自動跳出（規格 §5）
+  if (groups.reminders.length) dialog.value = 'reminders'
 })
 
 function openDialog (name) {
-  error.value = ''
-  groupName.value = ''
-  inviteCode.value = ''
+  reset()
   dialog.value = name
 }
 
-async function createGroup () {
-  error.value = ''
-  busy.value = true
-  try {
-    const group = await post('/groups', { name: groupName.value })
-    router.push({ name: 'board', params: { id: group.id } })
-  } catch (apiError) {
-    error.value = apiError.message
-  } finally {
-    busy.value = false
-  }
-}
-
-async function joinGroupByCode () {
-  error.value = ''
-  busy.value = true
-  try {
-    const group = await post('/groups/join', { code: inviteCode.value })
-    router.push({ name: 'board', params: { id: group.id } })
-  } catch (apiError) {
-    error.value = apiError.message
-  } finally {
-    busy.value = false
-  }
-}
+const enterBoard = (group) => router.push({ name: 'board', params: { id: group.id } })
+const createGroup = (name) => run(async () => enterBoard(await groups.create(name)))
+const joinGroupByCode = (code) => run(async () => enterBoard(await groups.join(code)))
 
 function goToReminder (reminder) {
   dialog.value = ''
@@ -82,9 +49,9 @@ function goToReminder (reminder) {
       </div>
     </div>
 
-    <p v-if="loading" class="faint" style="margin-top: 26px">載入中…</p>
+    <p v-if="groups.loading" class="faint" style="margin-top: 26px">載入中…</p>
 
-    <div v-else-if="!groups.length" class="empty">
+    <div v-else-if="!groups.list.length" class="empty">
       <div class="empty__ghosts"><i /><i /><i /></div>
       <p>你還沒有加入任何組別。<br />建立一個新的組別，或用邀請碼加入朋友的組。</p>
       <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center">
@@ -95,7 +62,7 @@ function goToReminder (reminder) {
 
     <div v-else style="margin-top: 26px; display: flex; gap: 22px; flex-wrap: wrap">
       <RouterLink
-        v-for="(group, index) in groups"
+        v-for="(group, index) in groups.list"
         :key="group.id"
         class="sticky"
         :class="STICKY_COLORS[index % STICKY_COLORS.length]"
@@ -124,61 +91,7 @@ function goToReminder (reminder) {
     </div>
   </main>
 
-  <ModalSheet v-if="dialog === 'create'" title="建立組別" width="400px" @close="dialog = ''">
-    <form class="form" style="margin-top: 16px" @submit.prevent="createGroup">
-      <label class="field">
-        <span class="field__label">組別名稱 <span class="req">*</span></span>
-        <input v-model="groupName" required maxlength="30" autofocus />
-        <span class="hint">1～30 字</span>
-      </label>
-      <p v-if="error" class="alert">{{ error }}</p>
-      <div class="sheet__foot">
-        <button type="button" class="btn btn--sm" @click="dialog = ''">取消</button>
-        <button type="submit" class="btn btn--primary btn--sm" :disabled="busy">建立</button>
-      </div>
-    </form>
-  </ModalSheet>
-
-  <ModalSheet v-if="dialog === 'join'" title="輸入邀請碼" width="400px" @close="dialog = ''">
-    <form class="form" style="margin-top: 16px" @submit.prevent="joinGroupByCode">
-      <label class="field field--num">
-        <span class="field__label">邀請碼 <span class="req">*</span></span>
-        <input
-          v-model="inviteCode"
-          required
-          style="letter-spacing: 0.22em; text-transform: uppercase"
-          placeholder="K7QX2A"
-          autofocus
-        />
-      </label>
-      <p v-if="error" class="hint hint--error">{{ error }}</p>
-      <div class="sheet__foot">
-        <button type="button" class="btn btn--sm" @click="dialog = ''">取消</button>
-        <button type="submit" class="btn btn--primary btn--sm" :disabled="busy">加入</button>
-      </div>
-    </form>
-  </ModalSheet>
-
-  <ModalSheet v-if="dialog === 'reminders'" title="有人提醒你確認任務" width="440px" @close="dialog = ''">
-    <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px">
-      <div
-        v-for="reminder in reminders"
-        :key="reminder.id"
-        style="display: flex; align-items: center; gap: 12px; background: var(--note-submitted); padding: 12px; border-radius: 3px"
-      >
-        <div>
-          <div style="font-size: 15px; font-weight: 700">{{ reminder.taskTitle }}</div>
-          <div style="margin-top: 3px; font-size: 12px; color: #6b5748">
-            {{ reminder.groupName }} · {{ reminder.fromName }} · {{ dateTime(reminder.at) }}
-          </div>
-        </div>
-        <button class="btn btn--primary btn--sm" style="margin-left: auto" @click="goToReminder(reminder)">
-          前往
-        </button>
-      </div>
-    </div>
-    <template #foot>
-      <button class="btn btn--sm" @click="dialog = ''">稍後再看</button>
-    </template>
-  </ModalSheet>
+  <CreateGroupDialog v-if="dialog === 'create'" :busy="busy" :error="error" @submit="createGroup" @close="dialog = ''" />
+  <JoinGroupDialog v-if="dialog === 'join'" :busy="busy" :error="error" @submit="joinGroupByCode" @close="dialog = ''" />
+  <RemindersDialog v-if="dialog === 'reminders'" :reminders="groups.reminders" @go="goToReminder" @close="dialog = ''" />
 </template>

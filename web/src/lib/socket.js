@@ -1,10 +1,11 @@
 import { io } from 'socket.io-client'
-import { auth } from './store.js'
+import { useAuthStore } from '../stores/auth.js'
 
 let socket = null
 let joinedGroupId = null
 
 function ensureSocket () {
+  const auth = useAuthStore()
   if (socket) {
     socket.auth = { token: auth.token }
     return socket
@@ -39,10 +40,4 @@ export function joinGroup (groupId, handlers = {}) {
       joinedGroupId = null
     }
   }
-}
-
-export function disconnectSocket () {
-  socket?.disconnect()
-  socket = null
-  joinedGroupId = null
 }

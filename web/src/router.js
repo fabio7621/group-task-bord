@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { isLoggedIn } from './store.js'
+import { useAuthStore } from './stores/auth.js'
 
 const routes = [
   { path: '/', redirect: '/groups' },
@@ -48,10 +48,11 @@ const routes = [
 export const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !isLoggedIn.value) {
+  const { isLoggedIn } = useAuthStore()
+  if (to.meta.requiresAuth && !isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if ((to.name === 'login' || to.name === 'register') && isLoggedIn.value) {
+  if ((to.name === 'login' || to.name === 'register') && isLoggedIn) {
     return { name: 'groups' }
   }
   return true
